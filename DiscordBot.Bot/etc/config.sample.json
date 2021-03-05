@@ -1,0 +1,7 @@
+{
+    "bot": {
+        "token": "Your BOT application token here",
+        "prefix": "Command prefix here",
+        "commandCooldown": 30
+    }
+}
