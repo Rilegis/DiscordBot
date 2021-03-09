@@ -15,6 +15,8 @@
     22/02/2021  Rilegis     4       Switched logging to simple custom logger, because i do not like
                                     Microsoft's own.
     05/03/2021  Rilegis     5       Added command cooldown capabilities.
+    08/03/2021  Rilegis     6       Added event call to 'CommandExecutedAsync', modified cooldown check
+                                    and renamed 'MessageReceived' to 'MessageReceivedAsync'.
 **********************************************************************/
 
 using System;
@@ -41,8 +43,9 @@ namespace DiscordBot.Bot.Services
             _commands = services.GetRequiredService<CommandService>();
             _services = services;
 
-            // Binding MessageReceived event for command checking
-            _discordClient.MessageReceived += MessageReceived;
+            // Binding events for command checking
+            _discordClient.MessageReceived += MessageReceivedAsync;
+            _commands.CommandExecuted += CommandExecutedAsync;
         }
 
         public async Task InitializeAsync()
@@ -55,7 +58,7 @@ namespace DiscordBot.Bot.Services
             _logger.LogInformation("Initialization complete.");
         }
 
-        public async Task MessageReceived(SocketMessage rawMessage)
+        public async Task MessageReceivedAsync(SocketMessage rawMessage)
         {
             // Ignore system messages and messages from other bots
             if (rawMessage is not SocketUserMessage message) return;
@@ -89,20 +92,16 @@ namespace DiscordBot.Bot.Services
                     i = Client.stackCooldown.userStack.IndexOf(context.User); // Get user index on 'userStack' (used to get correct timestamp for user's last command execution).
                     span = dateTime.Subtract(Client.stackCooldown.lastCommandAt[i]); // Get user's last command execution timestamp.
                     if (!(span.TotalSeconds > Client.config.Bot.CommandCooldown)) return; // If user is on cooldown, return without executing the command.
-                    else
-                    {
-                        // If user is not on cooldown, update user's last command execution timestamp.
-                        Client.stackCooldown.lastCommandAt[i] = dateTime;
-
-                        // Perform the execution of the command.
-                        await _commands.ExecuteAsync(context, argPos, _services);
-                    }
+                    else await _commands.ExecuteAsync(context, argPos, _services); // Perform the execution of the command.
                 }
             }
         }
 
         public async Task CommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
         {
+            // Variables declaration
+            int i;
+
             // command is unspecified when there was a search failure (command not found); we don't care about these errors
             if (!command.IsSpecified) return;
 
@@ -112,6 +111,10 @@ namespace DiscordBot.Bot.Services
                 _logger.LogWarning($"Command failed with result: {result}");
                 await context.Channel.SendMessageAsync($"Error: {result}");
             }
+
+            // Update user's 'stackCooldown' entry (I know for sure user exists in 'stackCooldown' because of the check on 'MessageReceivedAsync')
+            i = Client.stackCooldown.userStack.IndexOf((SocketUser)context.User); // Get user index on 'userStack' (used to get correct timestamp for user's last command execution).
+            Client.stackCooldown.lastCommandAt[i] = DateTime.Now; // If user is not on cooldown, update user's last command execution timestamp.
         }
     }
 }
