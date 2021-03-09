@@ -13,6 +13,7 @@
     22/02/2021  Rilegis     3       Switched logging to simple custom logger, because i do not like
                                     Microsoft's own.
     05/03/2021  Rilegis     4       Removed log from constructor.
+    08/03/2021  Rilegis     5       Renamed 'SayAsync' to 'EchoAsync' and added text check to said method.
 **********************************************************************/
 
 using System;
@@ -40,11 +41,11 @@ namespace DiscordBot.Bot.Modules
             await Context.Channel.SendMessageAsync($"{Context.User.Mention} Pong!");
         }
 
-        [Command("echo")]
-        [Alias("say")]
-        public async Task SayAsync([Remainder] string text)
+        [Command("echo"), Alias("say")]
+        public async Task EchoAsync([Remainder] string text = "")
         {
-            await Context.Channel.SendMessageAsync($"{Context.User.Mention} made me say: {text}");
+            if (text.Equals("")) return; // return if no text has been provided
+            else await Context.Channel.SendMessageAsync($"{Context.User.Mention} made me say: {text}");
         }
 
         [Command("8ball"), Alias("8b", "magicball")]
